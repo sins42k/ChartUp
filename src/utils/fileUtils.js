@@ -1,4 +1,6 @@
 // src/utils/fileUtils.js
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 /**
  * 파일의 유효성을 검사합니다. (확장자, 크기)
@@ -33,10 +35,62 @@ export const validateFile = (file) => {
  * @returns {Promise<Object>} - 파싱된 데이터 또는 에러 객체
  */
 export const parseFile = (file) => {
-  // TODO: PapaParse 및 SheetJS 라이브러리 연동
-  console.log(`${file.name} 파싱 기능은 ChatGPT가 구현할 예정입니다.`);
-  return Promise.resolve({
-    data: [],
-    error: null,
+  return new Promise((resolve) => {
+    const fileExtension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (fileExtension === '.csv') {
+      // CSV 파싱
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          if (result.errors.length > 0) {
+            resolve({ headers: [], data: [], error: 'CSV 파싱 중 오류가 발생했습니다.' });
+          } else {
+            const headers = result.meta.fields;
+            resolve({ headers, data: result.data, error: null });
+          }
+        },
+        error: () => {
+          resolve({ headers: [], data: [], error: 'CSV 파일을 읽는 중 오류가 발생했습니다.' });
+        },
+      });
+    } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+      // Excel 파싱
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (jsonData.length === 0) {
+            resolve({ headers: [], data: [], error: 'Excel 파일이 비어있습니다.' });
+            return;
+          }
+
+          const headers = jsonData[0];
+          const dataRows = jsonData.slice(1).map(row => {
+            const rowData = {};
+            headers.forEach((header, index) => {
+              rowData[header] = row[index];
+            });
+            return rowData;
+          });
+
+          resolve({ headers, data: dataRows, error: null });
+        } catch (err) {
+          resolve({ headers: [], data: [], error: 'Excel 파일을 처리하는 중 오류가 발생했습니다.' });
+        }
+      };
+      reader.onerror = () => {
+        resolve({ headers: [], data: [], error: 'Excel 파일을 읽는 중 오류가 발생했습니다.' });
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      resolve({ headers: [], data: [], error: '지원하지 않는 파일 형식입니다.' });
+    }
   });
 };

@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Documentation files
+docs/
+backend/
+db/
+docs/tester/
+
+.gitinore

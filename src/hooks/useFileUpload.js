@@ -1,6 +1,6 @@
 // src/hooks/useFileUpload.js
-import { useState, useCallback } from 'react';
-import { validateFile, parseFile } from '../utils/fileUtils';
+import { useState, useCallback } from "react";
+import { validateFile, parseFile } from "../utils/fileUtils";
 
 /**
  * 파일 업로드 및 처리 관련 로직을 담당하는 커스텀 훅
@@ -8,7 +8,7 @@ import { validateFile, parseFile } from '../utils/fileUtils';
  */
 const useFileUpload = () => {
   const [file, setFile] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, validating, parsing, success, error
+  const [uploadStatus, setUploadStatus] = useState("idle"); // idle, validating, parsing, success, error
   const [parsedData, setParsedData] = useState(null);
 
   /**
@@ -18,15 +18,15 @@ const useFileUpload = () => {
     const selectedFile = event.target.files[0];
     if (!selectedFile) return;
 
-    setUploadStatus('validating');
+    setUploadStatus("validating");
     if (!validateFile(selectedFile)) {
-      setUploadStatus('error');
+      setUploadStatus("error");
       setFile(null);
       return;
     }
 
     setFile(selectedFile);
-    setUploadStatus('parsing');
+    setUploadStatus("parsing");
 
     try {
       // ChatGPT가 parseFile 함수 내부 로직을 구현할 예정
@@ -34,12 +34,12 @@ const useFileUpload = () => {
       if (result.error) {
         throw new Error(result.error);
       }
-      setParsedData(result.data);
-      setUploadStatus('success');
+      setParsedData(result);
+      setUploadStatus("success");
     } catch (err) {
-      console.error('파일 파싱 오류:', err);
-      alert('파일을 처리하는 중 오류가 발생했습니다.');
-      setUploadStatus('error');
+      console.error("파일 파싱 오류:", err);
+      alert("파일을 처리하는 중 오류가 발생했습니다.");
+      setUploadStatus("error");
       setFile(null);
     }
   }, []);
@@ -49,7 +49,7 @@ const useFileUpload = () => {
    */
   const resetUpload = useCallback(() => {
     setFile(null);
-    setUploadStatus('idle');
+    setUploadStatus("idle");
     setParsedData(null);
   }, []);
 
