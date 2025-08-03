@@ -29,6 +29,15 @@ export const validateFile = (file) => {
   return true;
 };
 
+const convertToNumber = (value) => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const num = Number(value.replace(/,/g, ''));
+    if (!isNaN(num)) return num;
+  }
+  return value;
+};
+
 /**
  * 업로드된 파일을 파싱합니다.
  * @param {File} file - 파싱할 파일 객체
@@ -43,6 +52,7 @@ export const parseFile = (file) => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        dynamicTyping: true, // 자동으로 숫자형 데이터 변환
         complete: (result) => {
           if (result.errors.length > 0) {
             resolve({ headers: [], data: [], error: 'CSV 파싱 중 오류가 발생했습니다.' });
@@ -75,7 +85,7 @@ export const parseFile = (file) => {
           const dataRows = jsonData.slice(1).map(row => {
             const rowData = {};
             headers.forEach((header, index) => {
-              rowData[header] = row[index];
+              rowData[header] = convertToNumber(row[index]); // 숫자형으로 변환
             });
             return rowData;
           });
