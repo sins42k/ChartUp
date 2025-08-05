@@ -8,48 +8,69 @@ import { validateFile, parseFile } from "../utils/fileUtils";
  */
 const useFileUpload = () => {
   const [file, setFile] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState("idle"); // idle, validating, parsing, success, error
+  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, validating, parsing, success, error
   const [parsedData, setParsedData] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  /**
-   * 파일 입력 변경 시 호출되는 핸들러
-   */
-  const handleFileChange = useCallback(async (event) => {
-    const selectedFile = event.target.files[0];
+  const processFile = useCallback(async (selectedFile) => {
     if (!selectedFile) return;
 
-    setUploadStatus("validating");
+    setUploadStatus('validating');
     if (!validateFile(selectedFile)) {
-      setUploadStatus("error");
+      setUploadStatus('error');
       setFile(null);
       return;
     }
 
     setFile(selectedFile);
-    setUploadStatus("parsing");
+    setUploadStatus('parsing');
 
     try {
-      // ChatGPT가 parseFile 함수 내부 로직을 구현할 예정
       const result = await parseFile(selectedFile);
       if (result.error) {
         throw new Error(result.error);
       }
       setParsedData(result);
-      setUploadStatus("success");
+      setUploadStatus('success');
     } catch (err) {
-      console.error("파일 파싱 오류:", err);
-      alert("파일을 처리하는 중 오류가 발생했습니다.");
-      setUploadStatus("error");
+      console.error('파일 파싱 오류:', err);
+      alert('파일을 처리하는 중 오류가 발생했습니다.');
+      setUploadStatus('error');
       setFile(null);
     }
   }, []);
 
-  /**
-   * 업로드 상태를 초기화하는 함수
-   */
+  const handleFileChange = useCallback((event) => {
+    processFile(event.target.files[0]);
+  }, [processFile]);
+
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  }, [processFile]);
+
   const resetUpload = useCallback(() => {
     setFile(null);
-    setUploadStatus("idle");
+    setUploadStatus('idle');
     setParsedData(null);
   }, []);
 
@@ -57,7 +78,12 @@ const useFileUpload = () => {
     file,
     uploadStatus,
     parsedData,
+    isDragging,
     handleFileChange,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
     resetUpload,
   };
 };

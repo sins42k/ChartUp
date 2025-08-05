@@ -28,5 +28,6 @@ docs/
 backend/
 db/
 docs/tester/
+public/assets/
 
 .gitinore

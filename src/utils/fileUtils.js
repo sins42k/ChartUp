@@ -29,12 +29,28 @@ export const validateFile = (file) => {
   return true;
 };
 
-const convertToNumber = (value) => {
-  if (typeof value === 'number') return value;
+const tryConvert = (value) => {
+  if (value === null || value === undefined) return value;
+
+  // 1. Try converting to a number
   if (typeof value === 'string') {
     const num = Number(value.replace(/,/g, ''));
-    if (!isNaN(num)) return num;
+    if (!isNaN(num) && value.trim() !== '') {
+      return num;
+    }
+  } else if (typeof value === 'number') {
+    return value;
   }
+
+  // 2. Check if it's a date-like string (but not just a number)
+  if (typeof value === 'string' && isNaN(value)) {
+    const date = new Date(value);
+    // Check if it's a valid date
+    if (!isNaN(date.getTime())) {
+      return value; // Return the original string for labeling, chart will parse it for sorting
+    }
+  }
+
   return value;
 };
 
@@ -47,18 +63,29 @@ export const parseFile = (file) => {
   return new Promise((resolve) => {
     const fileExtension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
 
+    const processData = (result) => {
+        const headers = result.meta.fields;
+        const convertedData = result.data.map(row => {
+            const newRow = {};
+            headers.forEach(header => {
+                newRow[header] = tryConvert(row[header]);
+            });
+            return newRow;
+        });
+        resolve({ headers, data: convertedData, error: null });
+    }
+
     if (fileExtension === '.csv') {
       // CSV 파싱
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        dynamicTyping: true, // 자동으로 숫자형 데이터 변환
+        dynamicTyping: true,
         complete: (result) => {
           if (result.errors.length > 0) {
             resolve({ headers: [], data: [], error: 'CSV 파싱 중 오류가 발생했습니다.' });
           } else {
-            const headers = result.meta.fields;
-            resolve({ headers, data: result.data, error: null });
+            processData(result);
           }
         },
         error: () => {
@@ -71,26 +98,26 @@ export const parseFile = (file) => {
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
           
           if (jsonData.length === 0) {
             resolve({ headers: [], data: [], error: 'Excel 파일이 비어있습니다.' });
             return;
           }
 
-          const headers = jsonData[0];
-          const dataRows = jsonData.slice(1).map(row => {
-            const rowData = {};
-            headers.forEach((header, index) => {
-              rowData[header] = convertToNumber(row[index]); // 숫자형으로 변환
+          const headers = Object.keys(jsonData[0]);
+          const convertedData = jsonData.map(row => {
+            const newRow = {};
+            headers.forEach(header => {
+                newRow[header] = tryConvert(row[header]);
             });
-            return rowData;
+            return newRow;
           });
 
-          resolve({ headers, data: dataRows, error: null });
+          resolve({ headers, data: convertedData, error: null });
         } catch (err) {
           resolve({ headers: [], data: [], error: 'Excel 파일을 처리하는 중 오류가 발생했습니다.' });
         }
